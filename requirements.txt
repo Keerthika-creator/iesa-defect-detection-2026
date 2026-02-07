@@ -3,7 +3,7 @@
 
 # Deep Learning Framework
 tensorflow>=2.17.0
-keras==2.15.0
+tf-keras
 
 # Model Export
 onnx==1.15.0
