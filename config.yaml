@@ -1,0 +1,205 @@
+# IESA DeepTech Hackathon 2026 - Configuration File
+# ===================================================
+# Centralized hyperparameters for reproducible experiments
+
+# Dataset Configuration
+dataset:
+  root_path: "/content/Dataset"
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  random_seed: 42
+  
+  # Class definitions
+  wafer_classes:
+    - "Clean"
+    - "Center"
+    - "Donut"
+    - "Edge-Loc"
+    - "Edge-Ring"
+    - "Loc"
+    - "Scratch"
+    - "Other"
+  
+  die_classes:
+    - "Good"
+    - "Defective"
+    - "Unknown"
+
+# Model Architecture
+model:
+  backbone: "MobileNetV2"
+  alpha: 0.75  # Width multiplier (0.35, 0.5, 0.75, 1.0, 1.3, 1.4)
+  input_shape: [224, 224, 3]
+  dropout_rate: 0.3
+  
+  # Wafer head
+  wafer_head:
+    dense_units: [256, 128]
+    activation: "relu"
+    dropout: 0.3
+  
+  # Die head
+  die_head:
+    dense_units: [128, 64]
+    activation: "relu"
+    dropout: 0.2
+
+# Training Configuration
+training:
+  batch_size: 32
+  epochs: 50
+  initial_lr: 0.001
+  fine_tune_lr: 0.0001
+  fine_tune_epoch: 20  # Start fine-tuning after this epoch
+  fine_tune_layers: 30  # Number of layers to unfreeze
+  
+  # Optimizer
+  optimizer:
+    name: "adam"
+    beta_1: 0.9
+    beta_2: 0.999
+    epsilon: 1e-07
+  
+  # Loss function
+  loss: "categorical_crossentropy"
+  
+  # Callbacks
+  callbacks:
+    early_stopping:
+      enabled: true
+      monitor: "val_loss"
+      patience: 10
+      restore_best_weights: true
+    
+    reduce_lr:
+      enabled: true
+      monitor: "val_loss"
+      factor: 0.5
+      patience: 5
+      min_lr: 1e-7
+    
+    model_checkpoint:
+      enabled: true
+      monitor: "val_accuracy"
+      save_best_only: true
+    
+    tensorboard:
+      enabled: true
+      histogram_freq: 1
+
+# Data Augmentation (Industrial-Safe)
+augmentation:
+  horizontal_flip: true
+  vertical_flip: true
+  rotation_range: 5  # ±5 degrees
+  brightness_range: [0.9, 1.1]
+  contrast_range: [0.9, 1.1]
+  fill_mode: "reflect"
+  
+  # Disabled (unsafe for defect detection)
+  zoom_range: 0.0
+  width_shift_range: 0.0
+  height_shift_range: 0.0
+  shear_range: 0.0
+
+# Tile-Based Processing
+tiling:
+  enabled: true
+  tile_size: 224
+  overlap: 32
+  aggregation_method: "max"  # Options: max, mean, voting
+
+# Stage Detection Thresholds
+stage_detection:
+  wafer_size_threshold: 800  # pixels (min dimension)
+  repetition_threshold: 0.7  # FFT autocorrelation score
+  edge_density_threshold: 0.15  # Canny edge ratio
+
+# Inference Configuration
+inference:
+  confidence_threshold: 0.6  # Route to "Other/Unknown" if below
+  early_exit_confidence: 0.95  # Fast path for high-confidence
+  batch_inference: false
+  use_tiling: true
+
+# Edge Optimization
+edge:
+  quantization: true
+  onnx_opset: 13
+  tflite_format: "int8"  # Options: int8, fp16, fp32
+  target_latency_ms: 50  # Maximum acceptable latency
+  target_memory_mb: 10  # Maximum model size
+
+# Class Imbalance Handling
+class_balancing:
+  method: "class_weights"  # Options: class_weights, oversampling, undersampling
+  auto_compute: true
+
+# Output Configuration
+output:
+  base_dir: "/content/outputs"
+  save_models: true
+  save_onnx: true
+  save_tflite: true
+  save_metrics: true
+  save_plots: true
+  
+  # Metrics to track
+  metrics:
+    - "accuracy"
+    - "precision"
+    - "recall"
+    - "f1_score"
+    - "auc"
+    - "confusion_matrix"
+    - "inference_latency"
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  save_logs: true
+  console_output: true
+
+# Reproducibility
+reproducibility:
+  set_seed: true
+  deterministic: true
+  num_threads: 4
+
+# Experiment Tracking
+experiment:
+  name: "iesa_defect_detection_v1"
+  description: "Dual-stage defect classification with MobileNetV2"
+  tags:
+    - "edge-ai"
+    - "semiconductor"
+    - "defect-detection"
+  
+  notes: |
+    Novelty approaches:
+    1. Stage-aware inference (Wafer vs Die)
+    2. Dual-head architecture with shared backbone
+    3. Tile-based processing for high-res images
+    4. Industrial-safe augmentation
+    5. Confidence-aware unknown handling
+    6. Adaptive class balancing
+
+# Hardware Preferences
+hardware:
+  prefer_gpu: true
+  mixed_precision: false  # For edge compatibility
+  num_parallel_calls: 4
+
+# Validation
+validation:
+  cross_validation: false
+  k_folds: 5
+  stratified: true
+
+# Testing
+testing:
+  test_time_augmentation: false
+  ensemble_predictions: false
+  save_predictions: true
+  save_misclassifications: true
